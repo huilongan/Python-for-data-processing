@@ -1,0 +1,124 @@
+---
+title: "Homework III"
+author: "Xingye Ke"
+date: "February 13, 2018"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Homework III
+
+Extract the records from January 1965 to December 2005 from global temperature series. Use this extracted series to answer the following questions. 
+
+### Q(a)
+Decompose the series using stl command. Plot the components trend, seasonal effect and remainders. Note that stl command may not decompose the series of ts object without some adjustment as example. <br>
+
+The R code and the decomposed graphic are shown below: <br>
+
+```{r}
+setwd("C:/Users/n886528/Desktop/OnUse/WithTracu/Introductory_Time_Series_with_R_datasets-master")
+
+dat <- read.table("global.dat")
+
+# reshape
+
+datl <- as.data.frame(matrix(as.matrix(t(dat)),byrow = T, ncol =1 ))
+ts.obj <- ts(datl,start = c(1856,1),end = c(2005,12), frequency = 12)
+
+#extracted
+
+cutted.ts <- window(ts.obj, start = c(1965,1),end = c(2005,12))
+stl.obj <- stl(cutted.ts[,1], s.window = 'periodic')
+plot(stl(cutted.ts[,1],s.window = 'periodic'))
+```
+
+### Q(b)
+
+As we can see from the right side of the graphic\:<br>
+
+1.The grey rectangles of trend and the data series have the similar size, so the trend actually dominates the series;<br>
+
+2.If we look into the seasonal's grey rectangle, we could find the relative large size, which means variation in the seasonality is a much smaller component of the variation exhibited in the original series;<br>
+
+3.We could see from the residual part: the relative small size of grey rectangle means a large part of variation of the orginal series is left unexplained after adjusting for the trend and seasonality, which implys the additive model could not capture most part of the series and might not be a good fit for the series.<br>
+
+### Q(c)
+As we know, the additive model will be most appropriate if\:<br>
+
+  1. The magnitude of seasonality's fluctuations does not vary with the level of the series.<br>
+  2. The variation around trend does not vary with the series.<br>  
+<br>
+Any violation to these two points can be the proof to show a multiplicative model would be prefered.<br>
+<br>
+for the seasonality, it is very obvious that the variation in seasonal pattern is not proportional to the level of the time series.
+<br>
+for the trend part, we could draw the graphic to show the relationship between variation in trend and time series.<br>
+```{r}
+trend.ts <- stl.obj$time.series[,2]
+mag <- 1
+cum_var <- c()
+for(i in seq(1,length(trend.ts),mag)){
+  cum_var <- c(cum_var, var(trend.ts[1:i]))
+}
+
+plot(cum_var~cutted.ts[seq(1,length(trend.ts),mag)], type = 'l',
+     main = 'Trend variance ~ Time series',
+     xlab = 'Time series',
+     ylab = 'var in trend')
+loess.fit <- loess(cum_var~cutted.ts[seq(1,length(trend.ts),mag)])
+ord <- order(cutted.ts[seq(1,length(trend.ts),mag)])
+lines(cutted.ts[seq(1,length(trend.ts),mag)][ord],loess.fit$fitted[ord],col = 'red' , lwd = 3)
+```
+
+Note that there is an obvious increasing trend in the plot, which means a multiplicative model can be a good subsitude. 
+<br>
+
+### Q(d)
+
+The negative value in the original series is the biggest obstacle towards log transformation. If log transformation is still needed, we need to do some transformation to keep the information contained in the original series as much as possible. The first very straightforward method is to move the series to upper x-axis, which mins to add a constant to the whole series to make every number postive, then do the log-transformation and the relative time series analysis.<br>
+
+```{r}
+```
+
+### Q(e)
+
+The column named Point Forecast is the values forecasted by the additive model.
+
+```{r}
+library(forecast)
+fcst <- forecast(stl.obj, h = 24, level = 95 )
+print(fcst)
+```
+
+
+### Q(f)
+
+The forecasted values are the Blue line, and the shadow area is the corresponding confidence interval.
+```{r}
+values <- fcst$mean
+upper <- fcst$upper
+lower <- fcst$lower
+plot(fcst, include =2, PI=TRUE)
+```
+
+
+### Q(2)
+
+The RMSE is the sqrted mean of sum sqaure error.
+
+```{r}
+dat <- read.csv("qjnj.csv",header = TRUE)
+log.dat <- ts(log(dat$x),start = c(1960,1),end = c(1980,4),frequency = 4)
+
+decomposed <- decompose(log.dat,type = 'additive')
+
+rmse = sqrt(mean(decomposed$random^2,na.rm = TRUE))
+
+print(rmse)
+```
